@@ -32,7 +32,9 @@ Polymer( "quetzal-infinite-scroll", {
   },
 
   addElementToBottom: function() {
-    var template = this.$.itemTemplate.getDistributedNodes().array();
+    var nodes = this.$.itemTemplate.getDistributedNodes();
+    // If we're polyfilled, nodes will already be an Array, not a NodeList.
+    var template = nodes.array ? nodes.array() : nodes;
     var newElements = [];
     template.forEach( function( templateNode ) {
       newElements.push( templateNode.cloneNode( true ));
