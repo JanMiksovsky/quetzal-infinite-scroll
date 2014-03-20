@@ -17,7 +17,10 @@ For now, this only handles infinite scrolling in one direction: down.
     visibility: hidden;
   }
 
-  ::content > * {
+  polyfill-next-selector {
+    content: '*';
+  }
+  content /content/ > * {
     display: none;
   }
   </style>
@@ -63,11 +66,11 @@ Polymer( "quetzal-infinite-scroll", {
     }
   },
 
-  elementsPerPage: 10,
-
-  enteredView: function() {
+  attached: function() {
     this.addPageToBottom();
   },
+
+  elementsPerPage: 10,
 
   ready: function() {
     this.addEventListener( "scroll", function() {
