@@ -2,12 +2,12 @@
 An infinite surface that generates additional elements as necessary to always
 permit scrolling.
 
-For now, this only handles infinite scrolling in one direction: down.
+For now, this handles infinite scrolling in both direction: up and down.
 -->
 
 <link rel="import" href="../polymer/polymer.html">
 
-<polymer-element name="quetzal-infinite-scroll" attributes="elementsPerPage">
+<polymer-element name="quetzal-infinite-scroll" attributes="elementsPerPage addedTopElements disableDown disableUp">
 
 <template>
   <style>
@@ -30,9 +30,20 @@ For now, this only handles infinite scrolling in one direction: down.
 <script>
 Polymer( "quetzal-infinite-scroll", {
 
-  addedElements: function() {
+  addedElements: function(element) {
+    if (this.disableDown){
+      element = [""];
+    }
     // Subclasses can override to set up new elements.
   },
+  addedTopElements: function(element){
+    if (this.disableUp){
+      element = [""];
+    }
+    // Subclasses can override to set up new elements.
+  },
+  disableDown: false,
+  disableUp: false,
 
   addElementToBottom: function() {
     var nodes = this.$.itemTemplate.getDistributedNodes();
@@ -47,6 +58,23 @@ Polymer( "quetzal-infinite-scroll", {
       this.shadowRoot.appendChild( newElement );    
     }.bind( this ));
   },
+  addElementToTop: function() {
+    var nodes = this.$.itemTemplate.getDistributedNodes();
+    // If we're polyfilled, nodes will already be an Array, not a NodeList.
+    var template = nodes.array ? nodes.array() : nodes;
+    var newElements = [];
+    template.forEach( function( templateNode ) {
+      newElements.push( templateNode.cloneNode( true ));
+    });
+    this.addedTopElements( newElements );
+    var self = this;
+    newElements.forEach( function( newElement ) {
+      this.shadowRoot.insertBefore(newElement, this.shadowRoot.firstChild);
+      if (newElement.scrollHeight){
+        self.scrollTop += newElement.scrollHeight;
+      }
+    }.bind( this ));
+  },
 
   addPageToBottom: function() {
     // console.log( "adding page" );
@@ -57,11 +85,26 @@ Polymer( "quetzal-infinite-scroll", {
     // is fixed.
     this.$.itemTemplate.style.backgroundColor = "";
   },
+  addPageToTop: function() {
+    for ( var i = 0; i < this.elementsPerPage; i++ ) {
+      this.addElementToTop();
+    }
+    // HACK until bug https://code.google.com/p/chromium/issues/detail?id=317895
+    // is fixed.
+    this.$.itemTemplate.style.backgroundColor = "";
+  },
 
   addPageIfNeeded: function() {
-    if ( this._needsMoreElementsAtBottom() ) {
+    var isAdded = false;
+    if ( !this.disableDown && this._needsMoreElementsAtBottom() ) {
       this.addPageToBottom();
-    } else {
+      isAdded = true;
+    } 
+    if ( !this.disableUp && this._needsMoreElementsAtTop() ){
+      this.addPageToTop();
+      isAdded = true;
+    } 
+    if(isAdded){
       this.style.visibility = "inherit";
     }
   },
@@ -71,17 +114,24 @@ Polymer( "quetzal-infinite-scroll", {
   },
 
   elementsPerPage: 10,
+  observerStatus: true,
+  observer: null,
 
   ready: function() {
     this.addEventListener( "scroll", function() {
       this.scrolled();
     }.bind( this ));
-    var observer = new MutationObserver( function() {
+    var self = this;
+    this.observer = new MutationObserver( function() {
       window.setTimeout( function() {
+        if (!self.observerStatus){
+          this.observer.disconnect();
+          return;
+        }
         this.addPageIfNeeded();
       }.bind( this ), 1 );
     }.bind( this ));
-    observer.observe( this.shadowRoot, {
+    this.observer.observe( this.shadowRoot, {
       childList: true
     });
   },
@@ -91,9 +141,21 @@ Polymer( "quetzal-infinite-scroll", {
   },
 
   _needsMoreElementsAtBottom: function() {
-    var scrollBottom = this.scrollTop + this.clientHeight;
+    var clientHeight = this.clientHeight;
+    if (clientHeight === 0){
+      clientHeight = this.parentNode.clientHeight;
+    }
+    var scrollBottom = this.scrollTop + clientHeight;
     var belowView = this.scrollHeight - scrollBottom;
     return ( belowView < this.clientHeight );
+  }, 
+
+  _needsMoreElementsAtTop: function() {
+    var clientHeight = this.clientHeight;
+    if (clientHeight === 0){
+      clientHeight = this.parentNode.clientHeight;
+    }
+    return ( this.scrollTop < clientHeight );
   }
 
 });
