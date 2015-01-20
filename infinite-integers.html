@@ -7,7 +7,11 @@ Polymer( "infinite-integers", {
   addedElements: function( elements ) {
     elements[0].textContent = ++this.counter;
   },
-  counter: 0
+  counter: 0, 
+  backCounter: 1,
+  addedTopElements: function( elements ) {
+    elements[0].textContent = --this.backCounter;
+  }
 });
 </script>
 

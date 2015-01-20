@@ -2,7 +2,7 @@
 An infinite surface that generates additional elements as necessary to always
 permit scrolling.
 
-For now, this only handles infinite scrolling in one direction: down.
+For now, this handles infinite scrolling in both direction: up and down.
 -->
 
 <link rel="import" href="../polymer/polymer.html">
@@ -33,6 +33,9 @@ Polymer( "quetzal-infinite-scroll", {
   addedElements: function() {
     // Subclasses can override to set up new elements.
   },
+  addedTopElements: function(){
+    // Subclasses can override to set up new elements.
+  },
 
   addElementToBottom: function() {
     var nodes = this.$.itemTemplate.getDistributedNodes();
@@ -47,6 +50,23 @@ Polymer( "quetzal-infinite-scroll", {
       this.shadowRoot.appendChild( newElement );    
     }.bind( this ));
   },
+  addElementToTop: function() {
+    var nodes = this.$.itemTemplate.getDistributedNodes();
+    // If we're polyfilled, nodes will already be an Array, not a NodeList.
+    var template = nodes.array ? nodes.array() : nodes;
+    var newElements = [];
+    template.forEach( function( templateNode ) {
+      newElements.push( templateNode.cloneNode( true ));
+    });
+    this.addedTopElements( newElements );
+    var self = this;
+    newElements.forEach( function( newElement ) {
+      this.shadowRoot.insertBefore(newElement, this.shadowRoot.firstChild);
+      if (newElement.scrollHeight){
+        self.scrollTop += newElement.scrollHeight;
+      }
+    }.bind( this ));
+  },
 
   addPageToBottom: function() {
     // console.log( "adding page" );
@@ -57,10 +77,21 @@ Polymer( "quetzal-infinite-scroll", {
     // is fixed.
     this.$.itemTemplate.style.backgroundColor = "";
   },
+  addPageToTop: function() {
+    for ( var i = 0; i < this.elementsPerPage; i++ ) {
+      this.addElementToTop();
+    }
+    // HACK until bug https://code.google.com/p/chromium/issues/detail?id=317895
+    // is fixed.
+    this.$.itemTemplate.style.backgroundColor = "";
+  },
 
   addPageIfNeeded: function() {
     if ( this._needsMoreElementsAtBottom() ) {
       this.addPageToBottom();
+    } else if ( this._needsMoreElementsAtTop() ){
+      this.addPageToTop();
+      this.style.visibility = "inherit";
     } else {
       this.style.visibility = "inherit";
     }
@@ -94,6 +125,10 @@ Polymer( "quetzal-infinite-scroll", {
     var scrollBottom = this.scrollTop + this.clientHeight;
     var belowView = this.scrollHeight - scrollBottom;
     return ( belowView < this.clientHeight );
+  }, 
+
+  _needsMoreElementsAtTop: function() {
+    return ( this.scrollTop < this.clientHeight );
   }
 
 });
