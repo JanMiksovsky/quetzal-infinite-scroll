@@ -7,7 +7,7 @@ For now, this handles infinite scrolling in both direction: up and down.
 
 <link rel="import" href="../polymer/polymer.html">
 
-<polymer-element name="quetzal-infinite-scroll" attributes="elementsPerPage addedTopElements">
+<polymer-element name="quetzal-infinite-scroll" attributes="elementsPerPage addedTopElements disableDown disableUp">
 
 <template>
   <style>
@@ -30,12 +30,20 @@ For now, this handles infinite scrolling in both direction: up and down.
 <script>
 Polymer( "quetzal-infinite-scroll", {
 
-  addedElements: function() {
+  addedElements: function(element) {
+    if (this.disableDown){
+      element = [""];
+    }
     // Subclasses can override to set up new elements.
   },
-  addedTopElements: function(){
+  addedTopElements: function(element){
+    if (this.disableUp){
+      element = [""];
+    }
     // Subclasses can override to set up new elements.
   },
+  disableDown: false,
+  disableUp: false,
 
   addElementToBottom: function() {
     var nodes = this.$.itemTemplate.getDistributedNodes();
@@ -87,14 +95,16 @@ Polymer( "quetzal-infinite-scroll", {
   },
 
   addPageIfNeeded: function() {
-    if ( this._needsMoreElementsAtBottom() ) {
+    var isAdded = false;
+    if ( !this.disableDown && this._needsMoreElementsAtBottom() ) {
       this.addPageToBottom();
-    } else {
-      this.style.visibility = "inherit";
-    }
-    if ( this._needsMoreElementsAtTop() ){
+      isAdded = true;
+    } 
+    if ( !this.disableUp && this._needsMoreElementsAtTop() ){
       this.addPageToTop();
-    } else {
+      isAdded = true;
+    } 
+    if(isAdded){
       this.style.visibility = "inherit";
     }
   },
@@ -116,6 +126,7 @@ Polymer( "quetzal-infinite-scroll", {
       window.setTimeout( function() {
         if (!self.observerStatus){
           this.observer.disconnect();
+          return;
         }
         this.addPageIfNeeded();
       }.bind( this ), 1 );
